@@ -15,12 +15,12 @@ import itertools
 import threading
 import time
 import sys
-from multiprocessing import Queue
 
 class Analyzer(object):
 
+    
     def __init__(self):
-        self.days = 2
+        self.days = 31
         self.replaylist = []
         self.racelist = []
         self.Config = self.ConfigData()
@@ -101,6 +101,7 @@ class Analyzer(object):
     # Player Name and Race gathered
     def GetData(self, replay):
         self.region = replay.region
+        self.gamedates.append(pd.Timestamp(replay.date.timestamp(), unit='s', tz='US/Eastern'))
         for team in replay.teams:
             if team.players[0].name not in self.Config["App"]["Game"]["names"]:
                 self.opponentapm.append(team.players[0].avg_apm)
@@ -111,14 +112,7 @@ class Analyzer(object):
                     self.names.append(player.name)
                     self.results.append(player.result)
                     self.races.append(player.pick_race[0])
-            if team.players[0].name in self.Config["App"]["Game"]["names"]:
-                if team.players[0].result == 'Loss': 
-                    for message in replay.messages:
-                        if message.text in self.ggtypes:
-                            if message.player.name == team.players[0].name:
-                                self.gg.append('yes')
-                            else:
-                                self.gg.append('no')
+            elif team.players[0].name in self.Config["App"]["Game"]["names"]:
                 self.myapm.append(team.players[0].avg_apm)
                 for player in team:
                     if player.init_data['scaled_rating']:
@@ -127,7 +121,13 @@ class Analyzer(object):
                     self.mynames.append(player.name)
                     self.myresults.append(player.result)
                     self.myraces.append(player.pick_race[0])
-        self.gamedates.append(replay.date.timestamp())
+                if team.players[0].result == 'Loss': 
+                    for message in replay.messages:
+                        if message.text in self.ggtypes:
+                            if message.player.name == team.players[0].name:
+                                self.gg.append('yes')
+                            else:
+                                self.gg.append('no')
     
     def main(self):
         if len(os.listdir(self.sc2replaypath)) != 0:
@@ -141,10 +141,9 @@ if __name__ == "__main__":
     Analyzer.main()
     Analyzer.done = True
     # Use directly Columns as argument. You can use tab completion for this!
-    
     ratingPlot = pd.DataFrame(dict(Me=Analyzer.mynames, Opponent=Analyzer.names, Time=Analyzer.gamedates, APM=Analyzer.myapm, OpponentAPM=Analyzer.opponentapm, Race=Analyzer.myraces, MyResult=Analyzer.myresults))
-    fig = px.scatter(ratingPlot, x=ratingPlot.Time, y=ratingPlot.APM, color=ratingPlot.Race,  marginal_y="violin", trendline="ols", hover_data=[ratingPlot.Me, ratingPlot.Opponent, ratingPlot.OpponentAPM, ratingPlot.MyResult])
-    fig.update_layout(
+    fig = go.Figure(go.Scatter(x=ratingPlot.Time, y=ratingPlot.APM, marker_color=ratingPlot.APM, mode='markers', text=[ratingPlot.Me, ratingPlot.APM]))
+    fig.update_layout(  
         showlegend=True,
         title_text="APM over " + str(Analyzer.days) + " days",
         height=1000,
@@ -153,8 +152,8 @@ if __name__ == "__main__":
     fig.show()
 
     ratingPlot = pd.DataFrame(dict(Me=Analyzer.mynames, Opponent=Analyzer.names, Time=Analyzer.gamedates, Ratings=Analyzer.ratings, Race=Analyzer.races, MyResult=Analyzer.myresults))
-    fig2 = px.scatter(ratingPlot, x=ratingPlot.Time, y=ratingPlot.Ratings, color=ratingPlot.Race,  marginal_y="violin", trendline="ols", hover_data=[ratingPlot.Me, ratingPlot.Opponent, ratingPlot.MyResult])
-    fig2.update_layout(
+    fig2 = px.scatter(ratingPlot, x=ratingPlot.Time, y=ratingPlot.Ratings, color=ratingPlot.Race,  marginal_y="violin", trendline="Series", hover_data=[ratingPlot.Me, ratingPlot.Opponent, ratingPlot.MyResult])
+    fig2.update_layout( 
         showlegend=True,
         title_text="Opponent Ratings over " + str(Analyzer.days) + " days",
         height=1000,
@@ -163,7 +162,7 @@ if __name__ == "__main__":
     fig2.show()
 
     ratingOverTime = pd.DataFrame(dict(Me=Analyzer.mynames, Opponent=Analyzer.names, Time=Analyzer.gamedates, MyRating=Analyzer.myratings, Race=Analyzer.races, MyResult=Analyzer.myresults))
-    fig3 = px.scatter(ratingOverTime, x=ratingOverTime.Time, y=ratingOverTime.MyRating, color=ratingOverTime.MyResult, marginal_y="violin", trendline="ols", hover_data=[ratingOverTime.Me, ratingOverTime.Opponent, ratingOverTime.MyResult])
+    fig3 = px.scatter(ratingOverTime, x=ratingOverTime.Time, y=ratingOverTime.MyRating, color=ratingOverTime.MyResult, marginal_y="violin", trendline="Series", hover_data=[ratingOverTime.Me, ratingOverTime.Opponent, ratingOverTime.MyResult])
     fig3.update_layout(
         showlegend=True,
         title_text="My Ratings over " + str(Analyzer.days) + " days",
@@ -178,4 +177,10 @@ if __name__ == "__main__":
     values = [len(yes), no]
     
     fig4 = go.Figure(data=[go.Pie(labels=labels, values=values)])
+    fig4.update_layout(
+        showlegend=True,
+        title_text="GGs on loss",
+        height=1000,
+        width=1900
+    )
     fig4.show()
