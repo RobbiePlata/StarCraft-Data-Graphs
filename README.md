@@ -5,6 +5,7 @@ Basic program that displays specific information about .SC2Replay files in panda
 ## Installation
 ```
 pip install requirements.txt
+pip install --user --force-reinstall git+https://github.com/ggtracker/sc2reader.git
 ```
 
 ## Run
