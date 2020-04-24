@@ -11,7 +11,7 @@ pip install --user --force-reinstall git+https://github.com/ggtracker/sc2reader.
 ## Run
 
 ```
-Execute Analyzer.py
+Execute Main.py
 ```
 
 ## Data
